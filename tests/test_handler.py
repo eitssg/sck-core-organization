@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import json
 import pytest
 
-import core_organization.handler as handler
+from core_organization.handler import handler
 
 import core_helper.aws as aws
 
@@ -35,6 +35,6 @@ def test_handler(context):
 
     d["Credentials"] = credentials["SessionToken"]
 
-    response = handler.handler(d, context)
+    response = handler(d, context)
 
     print(json.dumps(response, indent=2))
