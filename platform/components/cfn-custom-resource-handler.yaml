@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Core automation - CloudFormation custom resource handler Lambda
+Parameters:
+  LambdaFunctionNamePrefix:
+    Type: String
+    Default: ""
+  LambdaCodeS3Bucket:
+    Description: The name of the bucket that contains your packaged source
+    Type: String
+  LambdaCodeS3KeyPrefix:
+    Description: The name of the ZIP package
+    Type: String
+    Default: custom-resource.zip
+
+Resources:
+  CFNCRHLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Lambda to handle Cloud Formation Custom Resource requests
+      Code:
+        S3Bucket:
+          Ref: LambdaCodeS3Bucket
+        S3Key:
+          Fn::Sub: "${LambdaCodeS3KeyPrefix}/lambda-cfn_custom_resource_handler.zip"
+      FunctionName:
+        Fn::Sub: "${LambdaFunctionNamePrefix}-cfn_custom_resource_handler"
+        #TODO ^
+      Handler: main.handler
+      MemorySize: 128
+      Role:
+        Fn::GetAtt: [CFNCRHLambdaRole, Arn]
+      Runtime: python3.12
+      Timeout: 300
+
+  CFNCRHLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+                #Allows the custom resource handler to manage aws organizations
+              - Effect: Allow
+                Action:
+                  - organizations:CreateOrganizationalUnit
+                  - organizations:CreatePolicy
+                  - organizations:DeleteOrganizationalUnit
+                  - organizations:DeletePolicy
+                  - organizations:DescribeAccount
+                  - organizations:DescribeCreateAccountStatus
+                  - organizations:DescribeOrganization
+                  - organizations:DescribeOrganizationalUnit
+                  - organizations:DescribePolicy
+                  - organizations:DetachPolicy
+                  - organizations:DisablePolicyType
+                  - organizations:EnablePolicyType
+                  - organizations:ListAccounts
+                  - organizations:ListAccountsForParent
+                  - organizations:ListChildren
+                  - organizations:ListParents
+                  - organizations:ListPolicies
+                  - organizations:ListPoliciesForTarget
+                  - organizations:ListRoots
+                  - organizations:ListTargetsForPolicy
+                  - organizations:MoveAccount
+                  - organizations:UpdateOrganizationalUnit
+                  - organizations:UpdatePolicy
+                  - organizations:AttachPolicy
+                Resource:
+                  - "*"
+Outputs:
+  CustomFunctionArn:
+    Description: The arn of the custom resource lambda handler function.
+    Value:
+      Fn::GetAtt:
+        - CFNCRHLambda
+        - Arn
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}:CFNCRHLambda"

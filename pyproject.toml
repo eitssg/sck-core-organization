@@ -1,0 +1,53 @@
+[build-system]
+requires = [ "poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0",]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry]
+name = "core-organization"
+version = "0.1.0"
+description = "Manage organization resources and service control policy"
+authors = [ "James Barwick <jbarwick@me.com>",]
+license = "GPL-3.0-only"
+readme = "README.md"
+maintainers = [ "James Barwick <jbarwick@me.com>",]
+
+[[tool.poetry.source]]
+name = "nexus"
+url = "https://monster-jj.jvj28.com:9091/repository/pypi/simple/"
+priority = "primary"
+
+[[tool.poetry.source]]
+name = "PyPI"
+priority = "explicit"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+bump = true
+ignore-untracked = true
+style = "semver"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+requests = "^2.32.3"
+urllib3 = "^2.2.3"
+boto3 = "^1.35.50"
+
+[tool.poetry.dependencies.core-framework]
+path = "../core-framework"
+develop = true
+
+[tool.poetry.dependencies.core-db]
+path = "../core-db"
+develop = true
+
+[tool.poetry-dynamic-versioning.files."core_organization/_version.py"]
+persistent-substitution = true
+initial-content = "  \"\"\"\n  This is the version informatooin for this template\n  \"\"\"\n  __version__ = \"0.0.0\"\n  __version_tuple__ = (0, 0, 0)\n"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.3"
+flake8 = "^7.1.1"
+cfn-lint = "^1.18.4"
+black = "^24.10.0"
+boto3-stubs = "^1.35.76"
+pytest-dotenv = "^0.5.2"

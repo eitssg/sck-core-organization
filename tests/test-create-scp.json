@@ -1,0 +1,16 @@
+{
+  "RequestType": "Create",
+  "ResourceType": "Custom::OrganizationalUnit",
+
+  "ServiceToken": "arn:aws:lambda:ap-southeast-2:003422198502:function:create-custom-rsc-CustomFunction-68QABL7SUE2J",
+  "ResponseURL": "https://cloudformation-custom-resource-response-apsoutheast2.s3-ap-southeast-2.amazonaws.com/arn%3Aaws%3Acloudformation%3Aap-southeast-2%3A003422198502%3Astack/BrentStack233/dd056380-db1a-11e7-b04b-50fae957fc1e%7COUNonProd%7C0fad38e7-a679-43d6-8f56-7c206510a948?AWSAccessKeyId=AKIAIHAPE667K7RJ3ENQ&Expires=1512636613&Signature=24Y7NxkIizLqMhmhVmmGhjjbMV0%3D",
+  "StackId": "arn:aws:cloudformation:ap-southeast-2:003422198502:stack/Stack233/dd056380-db1a-11e7-b04b-50fae957fc1e",
+  "RequestId": "0fad38e7-a679-43d6-8f56-7c206510a948",
+  "LogicalResourceId": "OUNonProd",
+  "ResourceProperties": {
+    "ServiceToken": "arn:aws:lambda:ap-southeast-2:003422198502:function:create-custom-rsc-CustomFunction-68QABL7SUE2J",
+    "ParentId": "root",
+    "Name": "ServicesOU22"
+  },
+  "None": "Why did we create 'yet-another-api'?  I really don't like this"
+}

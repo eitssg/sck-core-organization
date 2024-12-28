@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create some SCP for example
+Parameters:
+  CustomFunctionArn:
+    Type: String
+    Description: the ARN of the custom resource (this is an output of the previous
+      CloudFormation stack
+Resources:
+  CustomResource:
+    Type: Custom::ServiceControlPolicy
+    Properties:
+      ServiceToken: !Ref 'CustomFunctionArn'
+      "Fn::ImportValue": "stackname:Outputname"
+      PolicyName: ABRENTSTACK22
+      PolicyDescription: "PolicyDescriptionTest"
+      Type: "SERVICE_CONTROL_POLICY"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+           -  Effect: Deny
+              Resource: "*"
+              Action:
+                - cloudtrail:DeleteTrail
+                - cloudtrail:StopLogging
+           -  Effect: Allow
+              Resource: "*"
+              Action:
+                - athena:*
+                - brent2:*
+                - cloudformation:*
+                - cloudfront:*
+                - cloudhsm:*
+                - cloudtrail:*
+                - cloudwatch:*
+                - codedeploy:*
+                - codepipeline:*
+                - config:*
+                - dax:*
+                - execute-api:*
+                - firehose:*
+                - glacier:*
+                - iam:*
+                - kinesis:*
+                - kinesisanalytics:*
+                - kms:*
+                - lambda:*
+                - logs:*
+                - rds:*
+                - redshift:*
+                - route53:*
+                - s3:*
+                - sts:*
+                - sns:*
+                - sqs:*
+                - waf-regional:*
+                - waf:*
+
+  CustomResource2:
+    Type: Custom::ServiceControlPolicy
+    Properties:
+      ServiceToken: !Ref 'CustomFunctionArn'
+      PolicyName: ABRENTSTACK222
+      PolicyDescription: "PolicyDescriptionTest"
+      Type: "SERVICE_CONTROL_POLICY"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+           -  Effect: Deny
+              Resource: "*"
+              Action:
+                - cloudtrail:DeleteTrail
+                - cloudtrail:StopLogging
+           -  Effect: Allow
+              Resource: "*"
+              Action:
+                - "*"
+
+
+  OUNonProd:
+    Type: Custom::OrganizationalUnit
+    Properties:
+      ServiceToken: !Ref 'CustomFunctionArn'
+      ParentId: root
+      Name: ServicesOU22
+
+  AttachmentAutomation:
+    Type: Custom::ServiceControlPolicyAttachment
+    Properties:
+      ServiceToken: !Ref 'CustomFunctionArn'
+      PolicyId: !Ref 'CustomResource2'
+      TargetId: "003422198502"
+
+  AttachmentDefaultRoot:
+    Type: Custom::ServiceControlPolicyAttachment
+    Properties:
+      ServiceToken: !Ref 'CustomFunctionArn'
+      PolicyId: 'p-FullAWSAccess'
+      TargetId: "root"
+
+
+Outputs:
+  Message:
+    Description: The message from the custom resource.
+    Value: !GetAtt 'CustomResource.Id'
