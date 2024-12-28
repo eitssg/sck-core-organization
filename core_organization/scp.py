@@ -73,9 +73,7 @@ def create_service_control_policy(event: dict, context: Any):  # noqa: C901
 
     except Exception as e:
 
-        reponse_data_fail = {
-            "Message": "Failed Create_ServiceControlPolicy: " + str(e)
-        }
+        reponse_data_fail = {"Message": "Failed Create_ServiceControlPolicy: " + str(e)}
 
         log.error("Create Error:", details=reponse_data_fail)
 
@@ -188,9 +186,7 @@ def delete_service_control_policy(event: dict, context: Any):
 
     except Exception as e:
 
-        reponse_data_fail = {
-            "Message": "Failed resource: " + str(e)
-        }
+        reponse_data_fail = {"Message": "Failed resource: " + str(e)}
 
         log.error("Delete Error:", details=reponse_data_fail)
 

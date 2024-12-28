@@ -1,4 +1,5 @@
 """ Module to manage Organizational Units in AWS Organizations. """
+
 from typing import Any
 
 import boto3
