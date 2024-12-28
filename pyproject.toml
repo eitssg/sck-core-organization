@@ -3,7 +3,7 @@ requires = [ "poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0,<2.0.0",]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
-name = "core-organization"
+name = "sck-core-organization"
 version = "0.0.1"
 description = "Manage organization resources and service control policy"
 authors = [ "James Barwick <jbarwick@me.com>",]
@@ -11,6 +11,10 @@ license = "GPL-3.0-only"
 readme = "README.md"
 maintainers = [ "James Barwick <jbarwick@me.com>",]
 keywords = ["sck", "core", "aws", "cloud", "automation"]
+include = ["core_organization/_version.py"]
+
+[[tool.poetry.packages]]
+include = "core_organization"
 
 [[tool.poetry.source]]
 name = "nexus"
