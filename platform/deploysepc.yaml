@@ -1,0 +1,16 @@
+- core-organization-deploy:
+  type: create-stack
+  scope: branch
+  params:
+    stack_name: core-organization-lambda
+    template: core-organization-lambda.yaml
+    parameters:
+      LambdaFunctionNamePrefix: ""
+      LambdaCodeS3Bucket: {{ client }}-core-automation
+      LambdaCodeS3KeyPrefix: core-organization.zip
+    account: {{ acccount }}
+    region: {{ region }}
+    tags:
+      - Key: Name
+        Value: {{ client }}-core-automation-organizations
+  depends_on: []

@@ -6,18 +6,48 @@ import boto3
 
 from random import randint
 from time import sleep
-import collections
+import collections.abc
 
 import core_logging as log
+import core_helper.aws as aws
 
 from .response import send_response
+
+
+def list_organizational_units(event: dict, context: Any):
+
+    log.info("List_OrganizationalUnits.\n")
+
+    boto_organizations_client = aws.org_client()
+    response_data: dict[str, Any] = {}
+
+    try:
+        response = boto_organizations_client.list_organizational_units_for_parent(
+            ParentId=event["ResourceProperties"]["ParentId"]
+        )
+
+        ou_list = list()
+
+        for ou in response["OrganizationalUnits"]:
+            ou_list.append(ou)
+
+        response_data["OrganizationalUnits"] = ou_list
+        response_data["Message"] = "Listed OUs with success"
+
+        send_response(event, context, "SUCCESS", response_data, "Listed")
+
+    except Exception as e:
+        reponse_data_fail: dict = {}
+        log.error(str(e))
+        reponse_data_fail["Message"] = "Failed List_OrganizationalUnits: " + str(e)
+        send_response(event, context, "FAILED", reponse_data_fail, "Failed/List")
 
 
 def create_organizational_unit(event: dict, context: Any):  # noqa: C901
 
     log.info("Create_OrganizationalUnit.\n")
 
-    boto_organizations_client = boto3.client("organizations")
+    boto_organizations_client = aws.org_client()
     reponse_data = dict()
 
     try:
@@ -55,7 +85,7 @@ def create_organizational_unit(event: dict, context: Any):  # noqa: C901
                 # This makes the CFN way bigger and ugglier but it might be the only way
                 send_response(event, context, "SUCCESS", reponse_data, ou_id)
 
-                if isinstance(children, collections.Iterable) and not isinstance(
+                if isinstance(children, collections.abc.Iterable) and not isinstance(
                     children, str
                 ):
                     log.info("Doing add child iteration")
@@ -77,7 +107,7 @@ def create_organizational_unit(event: dict, context: Any):  # noqa: C901
                                     ],
                                 )
                             except Exception as BotoException:
-                                log.info(BotoException)
+                                log.info(str(BotoException))
                                 if "PolicyInUseException" in str(
                                     BotoException
                                 ) or "ConcurrentModificationException" in str(
@@ -95,7 +125,7 @@ def create_organizational_unit(event: dict, context: Any):  # noqa: C901
                     log.error("Children Not iterable")
 
             except Exception as BotoException:
-                log.info(BotoException)
+                log.info(str(BotoException))
                 if "PolicyInUseException" in str(
                     BotoException
                 ) or "ConcurrentModificationException" in str(BotoException):
@@ -108,7 +138,7 @@ def create_organizational_unit(event: dict, context: Any):  # noqa: C901
 
     except Exception as e:
         reponse_data_fail = dict()
-        log.error(e)
+        log.error(str(e))
         reponse_data_fail["Message"] = "Failed Create_OrganizationalUnit: " + str(e)
         send_response(event, context, "FAILED", reponse_data_fail, "Failed/Create")
 
@@ -137,7 +167,7 @@ def update_organizational_unit(event: dict, context: Any):  # noqa: C901
                     OrganizationalUnitId=event["PhysicalResourceId"], Name=ou_name
                 )
 
-                if isinstance(children, collections.Iterable) and not isinstance(
+                if isinstance(children, collections.abc.Iterable) and not isinstance(
                     children, str
                 ):
                     log.info("Doing add child iteration")
@@ -159,7 +189,7 @@ def update_organizational_unit(event: dict, context: Any):  # noqa: C901
                                     ],
                                 )
                             except Exception as BotoException:
-                                log.info(BotoException)
+                                log.info(str(BotoException))
                                 if "PolicyInUseException" in str(
                                     BotoException
                                 ) or "ConcurrentModificationException" in str(
@@ -177,7 +207,7 @@ def update_organizational_unit(event: dict, context: Any):  # noqa: C901
                     log.error("Children Not iterable")
 
             except Exception as BotoException:
-                log.info(BotoException)
+                log.info(str(BotoException))
                 if "PolicyInUseException" in str(
                     BotoException
                 ) or "ConcurrentModificationException" in str(BotoException):
@@ -199,7 +229,7 @@ def update_organizational_unit(event: dict, context: Any):  # noqa: C901
 
     except Exception as e:
         reponse_data_fail = dict()
-        log.error(e)
+        log.error(str(e))
         reponse_data_fail["Message"] = "Failed Update_OrganizationalUnit: " + str(e)
         send_response(
             event, context, "FAILED", reponse_data_fail, event["PhysicalResourceId"]
@@ -226,7 +256,7 @@ def delete_organizational_unit(event: dict, context: Any):
                 )
 
             except Exception as BotoException:
-                log.info(BotoException)
+                log.info(str(BotoException))
                 if "PolicyInUseException" in str(
                     BotoException
                 ) or "ConcurrentModificationException" in str(BotoException):
@@ -244,7 +274,7 @@ def delete_organizational_unit(event: dict, context: Any):
 
     except Exception as e:
         reponse_data_fail = dict()
-        log.error(e)
+        log.error(str(e))
         reponse_data_fail["Message"] = "Failed Delete_OrganizationalUnit: " + str(e)
         send_response(
             event, context, "FAILED", reponse_data_fail, event["PhysicalResourceId"]
@@ -276,7 +306,7 @@ def move_all_children_to_root(event: dict, context: Any):
                     )
 
                 except Exception as BotoException:
-                    log.info(BotoException)
+                    log.info(str(BotoException))
                     if "PolicyInUseException" in str(
                         BotoException
                     ) or "ConcurrentModificationException" in str(BotoException):
@@ -288,4 +318,4 @@ def move_all_children_to_root(event: dict, context: Any):
                 break
 
     except Exception as e:
-        log.error(e)
+        log.error(str(e))

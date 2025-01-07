@@ -10,7 +10,7 @@ Parameters:
   LambdaCodeS3KeyPrefix:
     Description: The name of the ZIP package
     Type: String
-    Default: custom-resource.zip
+    Default: artefacts/core-automation/organizations/master
 
 Resources:
   CFNCRHLambda:

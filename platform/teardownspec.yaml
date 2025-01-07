@@ -1,0 +1,8 @@
+- core-organization-teardown:
+  type: delete-stack
+  scope: branch
+  params:
+    stack_name: core-organization-lambda
+    account: {{ acccount }}
+    region: {{ region }}
+  depends_on: []
