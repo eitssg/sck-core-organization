@@ -2190,7 +2190,7 @@ reference = "nexus"
 
 [[package]]
 name = "sck-core-db"
-version = "0.0.4-pre.7+a033951"
+version = "0.0.4-pre.8+b08f072"
 description = "Core Database Library to access DynamoDB for Core-Automation"
 optional = false
 python-versions = "^3.12"
@@ -2199,8 +2199,8 @@ files = []
 develop = true
 
 [package.dependencies]
-boto3 = ">=1.35.87"
-botocore = ">=1.35.87"
+boto3 = ">=1.35.93"
+botocore = ">=1.35.93"
 pydantic = "^2.10.3"
 pynamodb = "^6.0.1"
 sck-core-framework = {path = "../sck-core-framework", develop = true}
@@ -2211,7 +2211,7 @@ url = "../sck-core-db"
 
 [[package]]
 name = "sck-core-framework"
-version = "0.0.4-pre.9+cbf0399"
+version = "0.0.4-pre.10+e6297cc"
 description = "Core-Framework for Core-Automation"
 optional = false
 python-versions = "^3.12"
@@ -2220,8 +2220,8 @@ files = []
 develop = true
 
 [package.dependencies]
-boto3 = ">=1.35.87"
-botocore = ">=1.35.87"
+boto3 = ">=1.35.93"
+botocore = ">=1.35.93"
 deepdiff = "^7.0.1"
 filters = "^1.3.2"
 jinja2 = "^3.1.4"
@@ -2230,7 +2230,7 @@ netaddr = "^1.3.0"
 python-slugify = "^8.0.4"
 pyyaml = "^6.0.2"
 pyyaml-include = "^2.1"
-ruamel-yaml = "^0.18.6"
+ruamel-yaml = "^0.18.10"
 
 [package.source]
 type = "directory"
@@ -2370,4 +2370,4 @@ reference = "nexus"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "26e079ec394fe75047f1419d31e93eab140dd0f11d5302cfae40a84b4926e492"
+content-hash = "88a7fbf8c8df27a6877caef9ddfbb7aae3cf56cc177d5cdd2842bb0dd11dfcf4"

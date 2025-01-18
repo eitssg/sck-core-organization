@@ -2,12 +2,12 @@
   type: create-stack
   scope: branch
   params:
-    stack_name: core-organization-lambda
+    stack_name: core-organization-lambda-{{ branch }}
     template: core-organization-lambda.yaml
     parameters:
       LambdaFunctionNamePrefix: ""
       LambdaCodeS3Bucket: {{ client }}-core-automation
-      LambdaCodeS3KeyPrefix: core-organization.zip
+      LambdaCodeS3KeyPrefix: artefacts/core-automation/organizations/master
     account: {{ acccount }}
     region: {{ region }}
     tags:
