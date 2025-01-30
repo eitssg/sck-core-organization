@@ -4,7 +4,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
 name = "sck-core-organization"
-version = "0.0.3"
+version = "0.0.4"
 description = "Manage organization resources and service control policy"
 authors = [ "James Barwick <jbarwick@me.com>",]
 license = "GPL-3.0-only"
@@ -33,14 +33,9 @@ boto3 = ">=1.35.93"
 botocore = ">=1.35.93"
 requests = "^2.32.3"
 urllib3 = "^2.2.3"
+sck-core-framework = "^0.0.4"
+sck-core-db = "^0.0.4"
 
-[tool.poetry.dependencies.sck-core-db]
-path = "../sck-core-db"
-develop = true
-
-[tool.poetry.dependencies.sck-core-framework]
-path = "../sck-core-framework"
-develop = true
 [tool.poetry-dynamic-versioning.files."core_organization/_version.py"]
 persistent-substitution = true
 initial-content = "  \"\"\"\n  This is the version informatooin for this template\n  \"\"\"\n  __version__ = \"0.0.0\"\n  __version_tuple__ = (0, 0, 0)\n"
