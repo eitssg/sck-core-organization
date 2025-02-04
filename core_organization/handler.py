@@ -1,4 +1,4 @@
-""" Main lambda handler for the core-organization package. """
+"""Main lambda handler for the core-organization package."""
 
 from typing import Callable
 from typing import Any

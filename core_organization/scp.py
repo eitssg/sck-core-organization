@@ -1,4 +1,4 @@
-""" Module to manage Service Control Policy """
+"""Module to manage Service Control Policy"""
 
 from typing import Any
 

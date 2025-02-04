@@ -1,4 +1,4 @@
-""" Module to manage Organizational Units in AWS Organizations. """
+"""Module to manage Organizational Units in AWS Organizations."""
 
 from typing import Any
 
