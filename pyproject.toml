@@ -4,7 +4,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
 name = "sck-core-organization"
-version = "0.0.7"
+version = "0.0.8"
 description = "Manage organization resources and service control policy"
 authors = [ "James Barwick <jbarwick@me.com>",]
 license = "GPL-3.0-only"
@@ -32,8 +32,8 @@ boto3 = ">=1.39.9"
 botocore = ">=1.39.9"
 requests = "^2.32.3"
 urllib3 = "^2.2.3"
-sck-core-framework = "^0.0.7"
-sck-core-db = "^0.0.7"
+sck-core-framework = "^0.0.8"
+sck-core-db = "^0.0.8"
 
 [tool.poetry-dynamic-versioning.substitution]
 files = ["core_organization/__init__.py"]
