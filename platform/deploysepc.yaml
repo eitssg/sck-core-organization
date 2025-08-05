@@ -1,16 +1,37 @@
-- core-organization-deploy:
-  type: create-stack
-  scope: branch
+- version: v1
+  kind: create-stack
+  metadata:
+    name: core-organization-lambda
+    description: Create a Lambda function for core organization management
+  scope: portfolio
   params:
-    stack_name: core-organization-lambda-{{ branch }}
+    stack_name: core-organization-lambda-{{ Branch }}
     template: core-organization-lambda.yaml
-    parameters:
-      LambdaFunctionNamePrefix: ""
-      LambdaCodeS3Bucket: {{ client }}-core-automation
-      LambdaCodeS3KeyPrefix: artefacts/core-automation/organizations/master
-    account: {{ acccount }}
-    region: {{ region }}
+    account: "{{ AutomationAccount }}"
+    region: "{{ AutomationRegion }}"
+    stack_parameters:
+      Client: "{{ Client }}"
+      Environment: "{{ Environment }}"
+      Scope: "{{ Scope | default('') }}"
+      LambdaCodeBucket: "{{ Client }}-core-automation"
+      LambdaCodeKey: "artefacts/core-automation/organizations/{{ Branch }}/lambda-package.zip"
+      PipelineProvisioningRoleArn: "arn:aws:iam::{{ Account }}:role/{{ Client }}-pipeline-provisioning-role"
+      CoreAutomationApiRoleArn: "arn:aws:iam::{{ Account }}:role/{{ Client }}-core-automation-api-role"
+      AlertEmail: "{{ AlertEmail | default('') }}"
+      LogLevel: "{{ LogLevel | default('INFO') }}"
+    account: "{{ Account }}"
+    region: "{{ Region }}"
     tags:
       - Key: Name
-        Value: {{ client }}-core-automation-organizations
+        Value: "{{ Client }}-core-organization-lambda"
+      - Key: Client
+        Value: "{{ Client }}"
+      - Key: Environment
+        Value: "{{ Environment }}"
+      - Key: Branch
+        Value: "{{ Branch }}"
+      - Key: Component
+        Value: "core-organization"
+      - Key: ManagedBy
+        Value: "simple-cloud-kit"
   depends_on: []

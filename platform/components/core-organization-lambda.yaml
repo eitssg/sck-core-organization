@@ -1,97 +1,550 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Core automation - CloudFormation custom resource handler Lambda
+Description: "Core Organization - AWS Organizations management Lambda function with comprehensive monitoring and security"
+
 Parameters:
-  LambdaFunctionNamePrefix:
+  Client:
     Type: String
-    Default: ""
-  LambdaCodeS3Bucket:
-    Description: The name of the bucket that contains your packaged source
+    Description: "Client identifier for resource naming"
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: "^[a-z][a-z0-9-]*[a-z0-9]$"
+    ConstraintDescription: "Must be lowercase alphanumeric with hyphens, start and end with letter/number"
+
+  Environment:
     Type: String
-  LambdaCodeS3KeyPrefix:
-    Description: The name of the ZIP package
+    Default: 'dev'
+    Description: 'Environment (dev, staging, prod)'
+    AllowedValues: ['dev', 'staging', 'prod']
+
+  Scope:
     Type: String
-    Default: artefacts/core-automation/organizations/master
+    Default: ''
+    Description: 'Optional scope prefix for multi-tenant deployments'
+    AllowedPattern: '^[a-z0-9-]*$'
+    ConstraintDescription: 'Must be lowercase alphanumeric with hyphens'
+
+  LambdaCodeBucket:
+    Type: String
+    Description: "S3 bucket containing the Lambda deployment package"
+    MinLength: 1
+
+  LambdaCodeKey:
+    Type: String
+    Description: "S3 key for the Lambda deployment package"
+    Default: "core-organization/lambda-package.zip"
+
+  PipelineProvisioningRoleArn:
+    Type: String
+    Description: "ARN of the pipeline provisioning role that Lambda will assume for AWS Organizations operations"
+    AllowedPattern: "^arn:aws:iam::[0-9]{12}:role/.+"
+    ConstraintDescription: "Must be a valid IAM role ARN"
+
+  CoreAutomationApiRoleArn:
+    Type: String
+    Description: "ARN of the core automation API role that can invoke this Lambda"
+    AllowedPattern: "^arn:aws:iam::[0-9]{12}:role/.+"
+    ConstraintDescription: "Must be a valid IAM role ARN"
+
+  AlertEmail:
+    Type: String
+    Default: ''
+    Description: 'Email address for monitoring alerts (optional)'
+    AllowedPattern: '^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})?$'
+    ConstraintDescription: 'Must be a valid email address or empty'
+
+  LogLevel:
+    Type: String
+    Default: 'INFO'
+    Description: 'Lambda function log level'
+    AllowedValues: ['TRACE', 'DEBUG', 'INFO', 'WARNING', 'ERROR']
+
+Conditions:
+  HasScope: !Not [!Equals [!Ref Scope, '']]
+  IsProduction: !Equals [!Ref Environment, 'prod']
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]
 
 Resources:
-  CFNCRHLambda:
+  # Lambda Function
+  CoreOrganizationLambda:
     Type: AWS::Lambda::Function
     Properties:
-      Description: Lambda to handle Cloud Formation Custom Resource requests
-      Code:
-        S3Bucket:
-          Ref: LambdaCodeS3Bucket
-        S3Key:
-          Fn::Sub: "${LambdaCodeS3KeyPrefix}/lambda-cfn_custom_resource_handler.zip"
-      FunctionName:
-        Fn::Sub: "${LambdaFunctionNamePrefix}-cfn_custom_resource_handler"
-        #TODO ^
-      Handler: main.handler
-      MemorySize: 128
-      Role:
-        Fn::GetAtt: [CFNCRHLambdaRole, Arn]
+      FunctionName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization'
+        - !Sub '${Client}-core-organization'
+      Description: 'Core Organization - AWS Organizations CloudFormation custom resource handler'
       Runtime: python3.12
-      Timeout: 300
+      Handler: core_organization.handler.handler
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Role: !GetAtt CoreOrganizationLambdaRole.Arn
+      Timeout: 900  # 15 minutes for complex organization operations
+      MemorySize: 512  # Increased for better performance
+      Environment:
+        Variables:
+          LOG_LEVEL: !Ref LogLevel
+          PIPELINE_PROVISIONING_ROLE_ARN: !Ref PipelineProvisioningRoleArn
+          CLIENT: !Ref Client
+          ENVIRONMENT: !Ref Environment
+          SCOPE: !Ref Scope
+      TracingConfig:
+        Mode: Active
+      DeadLetterConfig:
+        TargetArn: !GetAtt CoreOrganizationDeadLetterQueue.Arn
+      ReservedConcurrencyLimit: 5  # Limit concurrency for Organizations API rate limits
+      Tags:
+        - Key: Client
+          Value: !Ref Client
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Component
+          Value: core-organization
+        - Key: ManagedBy
+          Value: CloudFormation
 
-  CFNCRHLambdaRole:
+  # Lambda Execution Role
+  CoreOrganizationLambdaRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-lambda-role'
+        - !Sub '${Client}-core-organization-lambda-role'
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              AWS: !Ref CoreAutomationApiRoleArn
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                'aws:RequestedRegion': !Ref 'AWS::Region'
       Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
       Policies:
-        - PolicyName: root
+        - PolicyName: CoreOrganizationLambdaPolicy
           PolicyDocument:
-            Version: "2012-10-17"
+            Version: '2012-10-17'
             Statement:
+              # CloudWatch Logs
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: arn:aws:logs:*:*:*
-                #Allows the custom resource handler to manage aws organizations
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                Resource: 
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Client}-core-organization*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Client}-core-organization*:*'
+
+              # Assume Pipeline Provisioning Role
               - Effect: Allow
                 Action:
-                  - organizations:CreateOrganizationalUnit
-                  - organizations:CreatePolicy
-                  - organizations:DeleteOrganizationalUnit
-                  - organizations:DeletePolicy
-                  - organizations:DescribeAccount
-                  - organizations:DescribeCreateAccountStatus
-                  - organizations:DescribeOrganization
-                  - organizations:DescribeOrganizationalUnit
-                  - organizations:DescribePolicy
-                  - organizations:DetachPolicy
-                  - organizations:DisablePolicyType
-                  - organizations:EnablePolicyType
-                  - organizations:ListAccounts
-                  - organizations:ListAccountsForParent
-                  - organizations:ListChildren
-                  - organizations:ListParents
-                  - organizations:ListPolicies
-                  - organizations:ListPoliciesForTarget
-                  - organizations:ListRoots
-                  - organizations:ListTargetsForPolicy
-                  - organizations:MoveAccount
-                  - organizations:UpdateOrganizationalUnit
-                  - organizations:UpdatePolicy
-                  - organizations:AttachPolicy
-                Resource:
-                  - "*"
+                  - sts:AssumeRole
+                Resource: !Ref PipelineProvisioningRoleArn
+                Condition:
+                  StringEquals:
+                    'aws:RequestedRegion': !Ref 'AWS::Region'
+
+              # S3 Access for Lambda Code
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub '${LambdaCodeBucket}/*'
+
+              # SQS Dead Letter Queue
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:GetQueueAttributes
+                Resource: !GetAtt CoreOrganizationDeadLetterQueue.Arn
+
+              # CloudWatch Metrics (for custom metrics)
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    'cloudwatch:namespace': !Sub '${Client}/CoreOrganization'
+
+              # KMS (for log encryption in production)
+              - !If
+                - IsProduction
+                - Effect: Allow
+                  Action:
+                    - kms:Encrypt
+                    - kms:Decrypt
+                    - kms:ReEncrypt*
+                    - kms:GenerateDataKey*
+                    - kms:DescribeKey
+                  Resource: !GetAtt LogGroupKMSKey.Arn
+                - !Ref 'AWS::NoValue'
+
+      Tags:
+        - Key: Client
+          Value: !Ref Client
+        - Key: Environment
+          Value: !Ref Environment
+
+  # CloudWatch Log Group
+  CoreOrganizationLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${CoreOrganizationLambda}'
+      RetentionInDays: !If [IsProduction, 90, 30]
+      KmsKeyId: !If [IsProduction, !GetAtt LogGroupKMSKey.Arn, !Ref 'AWS::NoValue']
+
+  # KMS Key for Log Encryption (Production only)
+  LogGroupKMSKey:
+    Type: AWS::KMS::Key
+    Condition: IsProduction
+    Properties:
+      Description: !Sub 'KMS key for ${Client} Core Organization Lambda log encryption'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow CloudWatch Logs
+            Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+            Condition:
+              ArnEquals:
+                'kms:EncryptionContext:aws:logs:arn': !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Client}-core-organization'
+
+  LogGroupKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Condition: IsProduction
+    Properties:
+      AliasName: !Sub 'alias/${Client}-core-organization-logs'
+      TargetKeyId: !Ref LogGroupKMSKey
+
+  # Dead Letter Queue
+  CoreOrganizationDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-dlq'
+        - !Sub '${Client}-core-organization-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+      KmsMasterKeyId: !If [IsProduction, alias/aws/sqs, !Ref 'AWS::NoValue']
+      Tags:
+        - Key: Client
+          Value: !Ref Client
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SNS Topic for Alerts
+  CoreOrganizationSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-alerts'
+        - !Sub '${Client}-core-organization-alerts'
+      DisplayName: 'Core Organization Lambda Alerts'
+      KmsMasterKeyId: !If [IsProduction, alias/aws/sns, !Ref 'AWS::NoValue']
+
+  # Email Subscription (if email provided)
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      Protocol: email
+      TopicArn: !Ref CoreOrganizationSNSTopic
+      Endpoint: !Ref AlertEmail
+
+  # CloudWatch Alarms
+  LambdaErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-lambda-error-rate'
+        - !Sub '${Client}-core-organization-lambda-error-rate'
+      AlarmDescription: 'Alert when Lambda error rate is high'
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 3
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref CoreOrganizationLambda
+      AlarmActions:
+        - !Ref CoreOrganizationSNSTopic
+      TreatMissingData: notBreaching
+
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-lambda-duration'
+        - !Sub '${Client}-core-organization-lambda-duration'
+      AlarmDescription: 'Alert when Lambda duration is consistently high'
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 600000  # 10 minutes
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref CoreOrganizationLambda
+      AlarmActions:
+        - !Ref CoreOrganizationSNSTopic
+
+  LambdaThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-lambda-throttles'
+        - !Sub '${Client}-core-organization-lambda-throttles'
+      AlarmDescription: 'Alert when Lambda function is being throttled'
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref CoreOrganizationLambda
+      AlarmActions:
+        - !Ref CoreOrganizationSNSTopic
+
+  DeadLetterQueueAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-dlq-messages'
+        - !Sub '${Client}-core-organization-dlq-messages'
+      AlarmDescription: 'Alert when messages appear in dead letter queue'
+      MetricName: ApproximateNumberOfVisibleMessages
+      Namespace: AWS/SQS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt CoreOrganizationDeadLetterQueue.QueueName
+      AlarmActions:
+        - !Ref CoreOrganizationSNSTopic
+
+  # Custom Metric Filter for Application Errors
+  ApplicationErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref CoreOrganizationLambdaLogGroup
+      FilterPattern: '[timestamp, requestId, level="ERROR", ...]'
+      MetricTransformations:
+        - MetricNamespace: !Sub '${Client}/CoreOrganization'
+          MetricName: ApplicationErrors
+          MetricValue: '1'
+          DefaultValue: 0
+
+  # Application Error Alarm
+  ApplicationErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-application-errors'
+        - !Sub '${Client}-core-organization-application-errors'
+      AlarmDescription: 'Alert on application-level errors in Lambda logs'
+      MetricName: ApplicationErrors
+      Namespace: !Sub '${Client}/CoreOrganization'
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref CoreOrganizationSNSTopic
+      TreatMissingData: notBreaching
+
+  # Lambda Function Alias
+  CoreOrganizationLambdaAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref CoreOrganizationLambda
+      FunctionVersion: !GetAtt CoreOrganizationLambdaVersion.Version
+      Name: LIVE
+      Description: 'Live alias for Core Organization Lambda'
+
+  # Lambda Function Version
+  CoreOrganizationLambdaVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref CoreOrganizationLambda
+      Description: !Sub 'Version created at ${AWS::StackName} deployment'
+
+  # Lambda Permission for API Role
+  ApiRoleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CoreOrganizationLambdaAlias
+      Action: lambda:InvokeFunction
+      Principal: !Ref CoreAutomationApiRoleArn
+
+  # CloudWatch Dashboard
+  CoreOrganizationDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !If
+        - HasScope
+        - !Sub '${Scope}${Client}-core-organization-monitoring'
+        - !Sub '${Client}-core-organization-monitoring'
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/Lambda", "Invocations", "FunctionName", "${CoreOrganizationLambda}" ],
+                  [ ".", "Errors", ".", "." ],
+                  [ ".", "Duration", ".", "." ],
+                  [ ".", "Throttles", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Lambda Function Metrics",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "${Client}/CoreOrganization", "ApplicationErrors" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Application Errors",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/SQS", "ApproximateNumberOfVisibleMessages", "QueueName", "${CoreOrganizationDeadLetterQueue}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Dead Letter Queue Messages",
+                "period": 300
+              }
+            },
+            {
+              "type": "log",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "query": "SOURCE '${CoreOrganizationLambdaLogGroup}'\n| fields @timestamp, @message\n| filter @message like /ERROR/\n| sort @timestamp desc\n| limit 50",
+                "region": "${AWS::Region}",
+                "title": "Recent Lambda Errors",
+                "view": "table"
+              }
+            }
+          ]
+        }
+
 Outputs:
-  CustomFunctionArn:
-    Description: The arn of the custom resource lambda handler function.
-    Value:
-      Fn::GetAtt:
-        - CFNCRHLambda
-        - Arn
+  LambdaFunctionArn:
+    Description: 'ARN of the Core Organization Lambda function'
+    Value: !GetAtt CoreOrganizationLambda.Arn
     Export:
-      Name:
-        "Fn::Sub": "${AWS::StackName}:CFNCRHLambda"
+      Name: !Sub '${AWS::StackName}-LambdaArn'
+
+  LambdaFunctionName:
+    Description: 'Name of the Core Organization Lambda function'
+    Value: !Ref CoreOrganizationLambda
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaName'
+
+  LambdaAliasArn:
+    Description: 'ARN of the Core Organization Lambda function alias'
+    Value: !Ref CoreOrganizationLambdaAlias
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaAliasArn'
+
+  LambdaRoleArn:
+    Description: 'ARN of the Core Organization Lambda execution role'
+    Value: !GetAtt CoreOrganizationLambdaRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaRoleArn'
+
+  DeadLetterQueueArn:
+    Description: 'ARN of the Dead Letter Queue'
+    Value: !GetAtt CoreOrganizationDeadLetterQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-DLQArn'
+
+  SNSTopicArn:
+    Description: 'ARN of the SNS Topic for alerts'
+    Value: !Ref CoreOrganizationSNSTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-AlertsTopic'
+
+  DashboardURL:
+    Description: 'URL to the CloudWatch Dashboard'
+    Value: !Sub 'https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${CoreOrganizationDashboard}'
+    Export:
+      Name: !Sub '${AWS::StackName}-DashboardURL'
+
+  ServiceToken:
+    Description: 'Service Token for CloudFormation custom resources'
+    Value: !Ref CoreOrganizationLambdaAlias
+    Export:
+      Name: !Sub '${AWS::StackName}-ServiceToken'

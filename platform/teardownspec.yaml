@@ -1,8 +1,11 @@
-- core-organization-teardown:
-  type: delete-stack
-  scope: branch
+- version: v1
+  metadata:
+     name: core-organization-teardown
+  description: Teardown the core organization Lambda function
+  kind: delete-stack
+  scope: portfolio
   params:
     stack_name: core-organization-lambda
-    account: {{ acccount }}
-    region: {{ region }}
+    account: "{{ AutomationAccount }}"
+    region: "{{ AutomationRegion }}"
   depends_on: []
