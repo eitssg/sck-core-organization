@@ -107,12 +107,18 @@ def validate_event(event: dict) -> tuple[str, str]:
     # Validate resource type is supported
     if resource_type not in SUPPORTED_RESOURCE_TYPES:
         supported = ", ".join(SUPPORTED_RESOURCE_TYPES)
-        raise ValueError(f"Unsupported resource type '{resource_type}'. " f"Supported types: {supported}")
+        raise ValueError(
+            f"Unsupported resource type '{resource_type}'. "
+            f"Supported types: {supported}"
+        )
 
     # Validate request type is supported
     if request_type not in SUPPORTED_REQUEST_TYPES:
         supported = ", ".join(SUPPORTED_REQUEST_TYPES)
-        raise ValueError(f"Unsupported request type '{request_type}'. " f"Supported types: {supported}")
+        raise ValueError(
+            f"Unsupported request type '{request_type}'. "
+            f"Supported types: {supported}"
+        )
 
     return resource_type, request_type
 
@@ -154,7 +160,12 @@ def get_action_function(resource_type: str, request_type: str) -> ActionFunction
     return action_function
 
 
-def send_failure_response(event: dict, context: Any, error_message: str, physical_resource_id: Optional[str] = None) -> None:
+def send_failure_response(
+    event: dict,
+    context: Any,
+    error_message: str,
+    physical_resource_id: Optional[str] = None,
+) -> None:
     """
     Send a failure response to CloudFormation.
 
@@ -210,7 +221,10 @@ def send_failure_response(event: dict, context: Any, error_message: str, physica
     except Exception as response_error:
         log.error(
             "Failed to send failure response to CloudFormation",
-            details={"original_error": error_message, "response_error": str(response_error)},
+            details={
+                "original_error": error_message,
+                "response_error": str(response_error),
+            },
         )
 
 
@@ -297,26 +311,39 @@ def handler(event: dict, context: Any) -> None:
         # Validate event structure and extract required fields
         resource_type, request_type = validate_event(event)
 
-        log.debug("Event validation successful", details={"resource_type": resource_type, "request_type": request_type})
+        log.debug(
+            "Event validation successful",
+            details={"resource_type": resource_type, "request_type": request_type},
+        )
 
         # Get the appropriate action function
         action_function = get_action_function(resource_type, request_type)
 
         log.info(
             "Executing action",
-            details={"resource_type": resource_type, "request_type": request_type, "function_name": action_function.__name__},
+            details={
+                "resource_type": resource_type,
+                "request_type": request_type,
+                "function_name": action_function.__name__,
+            },
         )
 
         # Execute the action function
         # Note: Action functions are responsible for sending success responses to CloudFormation
         action_function(event, context)
 
-        log.info("Action completed successfully", details={"resource_type": resource_type, "request_type": request_type})
+        log.info(
+            "Action completed successfully",
+            details={"resource_type": resource_type, "request_type": request_type},
+        )
 
     except ValueError as validation_error:
         # Handle validation errors (bad input)
         error_message = f"Validation error: {str(validation_error)}"
-        log.error("Event validation failed", details={"error": str(validation_error), "event": event})
+        log.error(
+            "Event validation failed",
+            details={"error": str(validation_error), "event": event},
+        )
         send_failure_response(event, context, error_message)
 
     except Exception as unexpected_error:
@@ -337,4 +364,9 @@ def handler(event: dict, context: Any) -> None:
 
 
 # Export the supported resource types for external reference
-__all__ = ["handler", "SUPPORTED_REQUEST_TYPES", "SUPPORTED_RESOURCE_TYPES", "RESOURCE_ACTION_MAP"]
+__all__ = [
+    "handler",
+    "SUPPORTED_REQUEST_TYPES",
+    "SUPPORTED_RESOURCE_TYPES",
+    "RESOURCE_ACTION_MAP",
+]

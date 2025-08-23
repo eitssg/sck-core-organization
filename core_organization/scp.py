@@ -70,7 +70,9 @@ def validate_policy_document(policy_document: Any) -> str:
             policy_json = json.dumps(policy_document, separators=(",", ":"))
             parsed = policy_document
         else:
-            raise ValueError(f"Policy document must be dict or string, got {type(policy_document)}")
+            raise ValueError(
+                f"Policy document must be dict or string, got {type(policy_document)}"
+            )
 
         # Validate required policy structure
         if not isinstance(parsed, dict):
@@ -101,7 +103,10 @@ def validate_policy_document(policy_document: Any) -> str:
 
         log.debug(
             "Policy document validation successful",
-            details={"statement_count": len(parsed["Statement"]), "version": parsed["Version"]},
+            details={
+                "statement_count": len(parsed["Statement"]),
+                "version": parsed["Version"],
+            },
         )
 
         return policy_json
@@ -109,7 +114,10 @@ def validate_policy_document(policy_document: Any) -> str:
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid JSON in policy document: {str(e)}")
     except Exception as e:
-        log.error("Policy document validation failed", details={"error": str(e), "policy_type": type(policy_document).__name__})
+        log.error(
+            "Policy document validation failed",
+            details={"error": str(e), "policy_type": type(policy_document).__name__},
+        )
         raise
 
 
@@ -169,11 +177,16 @@ def validate_target_id(target_id: str, organizations_client: Any) -> str:
                 raise ValueError(f"Account {target_id} not found in organization")
         elif target_type == "organizational_unit":
             try:
-                organizations_client.describe_organizational_unit(OrganizationalUnitId=target_id)
+                organizations_client.describe_organizational_unit(
+                    OrganizationalUnitId=target_id
+                )
             except organizations_client.exceptions.OrganizationalUnitNotFoundException:
                 raise ValueError(f"Organizational Unit {target_id} not found")
 
-        log.debug("Target ID validation successful", details={"target_id": target_id, "target_type": target_type})
+        log.debug(
+            "Target ID validation successful",
+            details={"target_id": target_id, "target_type": target_type},
+        )
 
         return target_id
 
@@ -200,18 +213,28 @@ def retry_with_backoff(func, *args, **kwargs) -> Any:
         try:
             log.trace(
                 "Attempting API call",
-                details={"function": func.__name__, "attempt": attempt + 1, "max_attempts": MAX_RETRY_ATTEMPTS},
+                details={
+                    "function": func.__name__,
+                    "attempt": attempt + 1,
+                    "max_attempts": MAX_RETRY_ATTEMPTS,
+                },
             )
 
             if attempt > 0:
                 delay = randint(MIN_RETRY_DELAY, MAX_RETRY_DELAY)
-                log.debug("Retrying with backoff delay", details={"attempt": attempt + 1, "delay_seconds": delay})
+                log.debug(
+                    "Retrying with backoff delay",
+                    details={"attempt": attempt + 1, "delay_seconds": delay},
+                )
                 sleep(delay)
 
             result = func(*args, **kwargs)
 
             if attempt > 0:
-                log.info("API call succeeded after retry", details={"function": func.__name__, "attempt": attempt + 1})
+                log.info(
+                    "API call succeeded after retry",
+                    details={"function": func.__name__, "attempt": attempt + 1},
+                )
 
             return result
 
@@ -242,18 +265,27 @@ def retry_with_backoff(func, *args, **kwargs) -> Any:
             )
 
             if not is_retryable:
-                log.error("Non-retryable error encountered", details={"function": func.__name__, "error": error_msg})
+                log.error(
+                    "Non-retryable error encountered",
+                    details={"function": func.__name__, "error": error_msg},
+                )
                 raise
 
     # All retries exhausted
     log.error(
         "All retry attempts exhausted",
-        details={"function": func.__name__, "max_attempts": MAX_RETRY_ATTEMPTS, "last_error": str(last_exception)},
+        details={
+            "function": func.__name__,
+            "max_attempts": MAX_RETRY_ATTEMPTS,
+            "last_error": str(last_exception),
+        },
     )
     raise last_exception
 
 
-def get_policy_attachments(policy_id: str, organizations_client: Any) -> List[Dict[str, Any]]:
+def get_policy_attachments(
+    policy_id: str, organizations_client: Any
+) -> List[Dict[str, Any]]:
     """
     Get all targets that a policy is attached to.
 
@@ -282,11 +314,16 @@ def get_policy_attachments(policy_id: str, organizations_client: Any) -> List[Di
 
         return targets
     except Exception as e:
-        log.error("Failed to get policy attachments", details={"policy_id": policy_id, "error": str(e)})
+        log.error(
+            "Failed to get policy attachments",
+            details={"policy_id": policy_id, "error": str(e)},
+        )
         raise
 
 
-def is_policy_attached_to_target(policy_id: str, target_id: str, organizations_client: Any) -> bool:
+def is_policy_attached_to_target(
+    policy_id: str, target_id: str, organizations_client: Any
+) -> bool:
     """
     Check if a policy is currently attached to a specific target.
 
@@ -305,18 +342,26 @@ def is_policy_attached_to_target(policy_id: str, target_id: str, organizations_c
         is_attached = any(target.get("TargetId") == target_id for target in attachments)
 
         log.debug(
-            "Checked policy attachment status", details={"policy_id": policy_id, "target_id": target_id, "is_attached": is_attached}
+            "Checked policy attachment status",
+            details={
+                "policy_id": policy_id,
+                "target_id": target_id,
+                "is_attached": is_attached,
+            },
         )
 
         return is_attached
     except Exception as e:
         log.warning(
-            "Failed to check policy attachment status", details={"policy_id": policy_id, "target_id": target_id, "error": str(e)}
+            "Failed to check policy attachment status",
+            details={"policy_id": policy_id, "target_id": target_id, "error": str(e)},
         )
         return False
 
 
-def handle_default_policy_attachment(target_id: str, organizations_client: Any, event: Dict[str, Any]) -> None:
+def handle_default_policy_attachment(
+    target_id: str, organizations_client: Any, event: Dict[str, Any]
+) -> None:
     """
     Handle default FullAWSAccess policy attachment when needed.
 
@@ -331,32 +376,50 @@ def handle_default_policy_attachment(target_id: str, organizations_client: Any, 
 
     try:
         # Check if FullAWSAccess is already attached
-        if is_policy_attached_to_target(DEFAULT_FULL_ACCESS_POLICY_ID, target_id, organizations_client):
+        if is_policy_attached_to_target(
+            DEFAULT_FULL_ACCESS_POLICY_ID, target_id, organizations_client
+        ):
             log.info(
                 "Default FullAWSAccess policy already attached",
-                details={"target_id": target_id, "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID},
+                details={
+                    "target_id": target_id,
+                    "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID,
+                },
             )
             return
 
         # Attach default policy
         log.info(
-            "Attaching default FullAWSAccess policy", details={"target_id": target_id, "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID}
+            "Attaching default FullAWSAccess policy",
+            details={
+                "target_id": target_id,
+                "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID,
+            },
         )
 
         def attach_default():
-            return organizations_client.attach_policy(PolicyId=DEFAULT_FULL_ACCESS_POLICY_ID, TargetId=target_id)
+            return organizations_client.attach_policy(
+                PolicyId=DEFAULT_FULL_ACCESS_POLICY_ID, TargetId=target_id
+            )
 
         retry_with_backoff(attach_default)
 
         log.info(
             "Successfully attached default FullAWSAccess policy",
-            details={"target_id": target_id, "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID},
+            details={
+                "target_id": target_id,
+                "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID,
+            },
         )
 
     except Exception as e:
         log.error(
             "Failed to attach default FullAWSAccess policy",
-            details={"target_id": target_id, "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID, "error": str(e)},
+            details={
+                "target_id": target_id,
+                "policy_id": DEFAULT_FULL_ACCESS_POLICY_ID,
+                "error": str(e),
+            },
         )
         # Don't raise - this is a best-effort operation
 
@@ -372,7 +435,10 @@ def create_service_control_policy(event: Dict[str, Any], context: Any) -> None:
     """
     log.info(
         "Starting Service Control Policy creation",
-        details={"logical_resource_id": event.get("LogicalResourceId"), "stack_id": event.get("StackId")},
+        details={
+            "logical_resource_id": event.get("LogicalResourceId"),
+            "stack_id": event.get("StackId"),
+        },
     )
 
     try:
@@ -383,7 +449,9 @@ def create_service_control_policy(event: Dict[str, Any], context: Any) -> None:
         # Extract and validate parameters
         resource_properties = event.get("ResourceProperties", {})
         policy_name = resource_properties.get("PolicyName")
-        policy_description = resource_properties.get("PolicyDescription", "Created by CloudFormation")
+        policy_description = resource_properties.get(
+            "PolicyDescription", "Created by CloudFormation"
+        )
         policy_type = resource_properties.get("Type", POLICY_TYPE_SCP)
         policy_document = resource_properties.get("PolicyDocument")
 
@@ -395,7 +463,11 @@ def create_service_control_policy(event: Dict[str, Any], context: Any) -> None:
 
         log.info(
             "Creating Service Control Policy",
-            details={"policy_name": policy_name, "policy_description": policy_description, "policy_type": policy_type},
+            details={
+                "policy_name": policy_name,
+                "policy_description": policy_description,
+                "policy_type": policy_type,
+            },
         )
 
         # Validate policy document
@@ -405,7 +477,10 @@ def create_service_control_policy(event: Dict[str, Any], context: Any) -> None:
         # Create the policy with retry logic
         def create_policy():
             return organizations_client.create_policy(
-                Content=policy_document_json, Description=policy_description, Name=policy_name, Type=policy_type
+                Content=policy_document_json,
+                Description=policy_description,
+                Name=policy_name,
+                Type=policy_type,
             )
 
         response = retry_with_backoff(create_policy)
@@ -417,7 +492,11 @@ def create_service_control_policy(event: Dict[str, Any], context: Any) -> None:
 
         log.info(
             "Service Control Policy created successfully",
-            details={"policy_id": policy_id, "policy_arn": policy_arn, "policy_name": policy_name},
+            details={
+                "policy_id": policy_id,
+                "policy_arn": policy_arn,
+                "policy_name": policy_name,
+            },
         )
 
         # Prepare response data
@@ -428,13 +507,23 @@ def create_service_control_policy(event: Dict[str, Any], context: Any) -> None:
             "Message": "Service Control Policy created successfully",
         }
 
-        send_success_response(event=event, context=context, response_data=response_data, physical_resource_id=policy_id)
+        send_success_response(
+            event=event,
+            context=context,
+            response_data=response_data,
+            physical_resource_id=policy_id,
+        )
 
     except ValueError as validation_error:
-        error_msg = f"Validation error creating Service Control Policy: {str(validation_error)}"
+        error_msg = (
+            f"Validation error creating Service Control Policy: {str(validation_error)}"
+        )
         log.error(
             "Policy creation validation failed",
-            details={"error": str(validation_error), "resource_properties": event.get("ResourceProperties", {})},
+            details={
+                "error": str(validation_error),
+                "resource_properties": event.get("ResourceProperties", {}),
+            },
         )
         send_failure_response(event, context, error_msg)
 
@@ -445,7 +534,9 @@ def create_service_control_policy(event: Dict[str, Any], context: Any) -> None:
             details={
                 "error": str(e),
                 "error_type": type(e).__name__,
-                "policy_name": event.get("ResourceProperties", {}).get("PolicyName", "Unknown"),
+                "policy_name": event.get("ResourceProperties", {}).get(
+                    "PolicyName", "Unknown"
+                ),
             },
         )
         send_failure_response(event, context, error_msg)
@@ -464,7 +555,10 @@ def update_service_control_policy(event: Dict[str, Any], context: Any) -> None:
 
     log.info(
         "Starting Service Control Policy update",
-        details={"policy_id": policy_id, "logical_resource_id": event.get("LogicalResourceId")},
+        details={
+            "policy_id": policy_id,
+            "logical_resource_id": event.get("LogicalResourceId"),
+        },
     )
 
     try:
@@ -482,7 +576,9 @@ def update_service_control_policy(event: Dict[str, Any], context: Any) -> None:
         # Extract and validate parameters
         resource_properties = event.get("ResourceProperties", {})
         policy_name = resource_properties.get("PolicyName")
-        policy_description = resource_properties.get("PolicyDescription", "Updated by CloudFormation")
+        policy_description = resource_properties.get(
+            "PolicyDescription", "Updated by CloudFormation"
+        )
         policy_document = resource_properties.get("PolicyDocument")
 
         if not policy_name:
@@ -493,7 +589,11 @@ def update_service_control_policy(event: Dict[str, Any], context: Any) -> None:
 
         log.info(
             "Updating Service Control Policy",
-            details={"policy_id": policy_id, "policy_name": policy_name, "policy_description": policy_description},
+            details={
+                "policy_id": policy_id,
+                "policy_name": policy_name,
+                "policy_description": policy_description,
+            },
         )
 
         # Validate policy document
@@ -503,7 +603,10 @@ def update_service_control_policy(event: Dict[str, Any], context: Any) -> None:
         # Update the policy with retry logic
         def update_policy():
             return organizations_client.update_policy(
-                PolicyId=policy_id, Name=policy_name, Description=policy_description, Content=policy_document_json
+                PolicyId=policy_id,
+                Name=policy_name,
+                Description=policy_description,
+                Content=policy_document_json,
             )
 
         response = retry_with_backoff(update_policy)
@@ -514,7 +617,11 @@ def update_service_control_policy(event: Dict[str, Any], context: Any) -> None:
 
         log.info(
             "Service Control Policy updated successfully",
-            details={"policy_id": policy_id, "policy_arn": policy_arn, "policy_name": policy_name},
+            details={
+                "policy_id": policy_id,
+                "policy_arn": policy_arn,
+                "policy_name": policy_name,
+            },
         )
 
         # Prepare response data
@@ -525,18 +632,32 @@ def update_service_control_policy(event: Dict[str, Any], context: Any) -> None:
             "Message": "Service Control Policy updated successfully",
         }
 
-        send_success_response(event=event, context=context, response_data=response_data, physical_resource_id=policy_id)
+        send_success_response(
+            event=event,
+            context=context,
+            response_data=response_data,
+            physical_resource_id=policy_id,
+        )
 
     except ValueError as validation_error:
-        error_msg = f"Validation error updating Service Control Policy: {str(validation_error)}"
-        log.error("Policy update validation failed", details={"policy_id": policy_id, "error": str(validation_error)})
+        error_msg = (
+            f"Validation error updating Service Control Policy: {str(validation_error)}"
+        )
+        log.error(
+            "Policy update validation failed",
+            details={"policy_id": policy_id, "error": str(validation_error)},
+        )
         send_failure_response(event, context, error_msg, policy_id)
 
     except Exception as e:
         error_msg = f"Failed to update Service Control Policy: {str(e)}"
         log.error(
             "Service Control Policy update failed",
-            details={"policy_id": policy_id, "error": str(e), "error_type": type(e).__name__},
+            details={
+                "policy_id": policy_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
         )
         send_failure_response(event, context, error_msg, policy_id)
 
@@ -554,16 +675,24 @@ def delete_service_control_policy(event: Dict[str, Any], context: Any) -> None:
 
     log.info(
         "Starting Service Control Policy deletion",
-        details={"policy_id": policy_id, "logical_resource_id": event.get("LogicalResourceId")},
+        details={
+            "policy_id": policy_id,
+            "logical_resource_id": event.get("LogicalResourceId"),
+        },
     )
 
     try:
         if not policy_id or policy_id.startswith("Failed/"):
-            log.info("Skipping deletion - invalid or failed policy ID", details={"policy_id": policy_id})
+            log.info(
+                "Skipping deletion - invalid or failed policy ID",
+                details={"policy_id": policy_id},
+            )
             send_success_response(
                 event=event,
                 context=context,
-                response_data={"Message": "Skipped deletion - policy was never created"},
+                response_data={
+                    "Message": "Skipped deletion - policy was never created"
+                },
                 physical_resource_id=policy_id or "",
             )
             return
@@ -586,18 +715,28 @@ def delete_service_control_policy(event: Dict[str, Any], context: Any) -> None:
                     details={
                         "policy_id": policy_id,
                         "attachment_count": len(attachments),
-                        "attached_targets": [target.get("TargetId") for target in attachments],
+                        "attached_targets": [
+                            target.get("TargetId") for target in attachments
+                        ],
                     },
                 )
 
         except organizations_client.exceptions.PolicyNotFoundException:
-            log.info("Policy not found - already deleted", details={"policy_id": policy_id})
+            log.info(
+                "Policy not found - already deleted", details={"policy_id": policy_id}
+            )
             send_success_response(
-                event=event, context=context, response_data={"Message": "Policy already deleted"}, physical_resource_id=policy_id
+                event=event,
+                context=context,
+                response_data={"Message": "Policy already deleted"},
+                physical_resource_id=policy_id,
             )
             return
         except Exception as e:
-            log.warning("Could not check policy attachments", details={"policy_id": policy_id, "error": str(e)})
+            log.warning(
+                "Could not check policy attachments",
+                details={"policy_id": policy_id, "error": str(e)},
+            )
 
         # Delete the policy with retry logic
         def delete_policy():
@@ -605,22 +744,39 @@ def delete_service_control_policy(event: Dict[str, Any], context: Any) -> None:
 
         retry_with_backoff(delete_policy)
 
-        log.info("Service Control Policy deleted successfully", details={"policy_id": policy_id})
+        log.info(
+            "Service Control Policy deleted successfully",
+            details={"policy_id": policy_id},
+        )
 
-        response_data = {"PolicyId": policy_id, "Message": "Service Control Policy deleted successfully"}
+        response_data = {
+            "PolicyId": policy_id,
+            "Message": "Service Control Policy deleted successfully",
+        }
 
-        send_success_response(event=event, context=context, response_data=response_data, physical_resource_id=policy_id)
+        send_success_response(
+            event=event,
+            context=context,
+            response_data=response_data,
+            physical_resource_id=policy_id,
+        )
 
     except Exception as e:
         error_msg = f"Failed to delete Service Control Policy: {str(e)}"
         log.error(
             "Service Control Policy deletion failed",
-            details={"policy_id": policy_id, "error": str(e), "error_type": type(e).__name__},
+            details={
+                "policy_id": policy_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
         )
         send_failure_response(event, context, error_msg, policy_id)
 
 
-def create_service_control_policy_attachment(event: Dict[str, Any], context: Any) -> None:
+def create_service_control_policy_attachment(
+    event: Dict[str, Any], context: Any
+) -> None:
     """
     Attach a Service Control Policy to a target (root, OU, or account).
 
@@ -629,7 +785,10 @@ def create_service_control_policy_attachment(event: Dict[str, Any], context: Any
     :param context: Lambda context
     :type context: Any
     """
-    log.info("Starting Service Control Policy attachment creation", details={"logical_resource_id": event.get("LogicalResourceId")})
+    log.info(
+        "Starting Service Control Policy attachment creation",
+        details={"logical_resource_id": event.get("LogicalResourceId")},
+    )
 
     try:
         # Get AWS Organizations client
@@ -651,34 +810,57 @@ def create_service_control_policy_attachment(event: Dict[str, Any], context: Any
         if not POLICY_ID_PATTERN.match(policy_id):
             raise ValueError(f"Invalid policy ID format: {policy_id}")
 
-        log.info("Creating Service Control Policy attachment", details={"policy_id": policy_id, "target_id": target_id})
+        log.info(
+            "Creating Service Control Policy attachment",
+            details={"policy_id": policy_id, "target_id": target_id},
+        )
 
         # Validate and resolve target ID
         resolved_target_id = validate_target_id(target_id, organizations_client)
 
         # Generate physical resource ID for the attachment
-        physical_resource_id = f"SCPAttachment-{event.get('LogicalResourceId', 'Unknown')}"
+        physical_resource_id = (
+            f"SCPAttachment-{event.get('LogicalResourceId', 'Unknown')}"
+        )
 
         # Check if already attached
-        if is_policy_attached_to_target(policy_id, resolved_target_id, organizations_client):
-            log.info("Policy already attached to target", details={"policy_id": policy_id, "target_id": resolved_target_id})
+        if is_policy_attached_to_target(
+            policy_id, resolved_target_id, organizations_client
+        ):
+            log.info(
+                "Policy already attached to target",
+                details={"policy_id": policy_id, "target_id": resolved_target_id},
+            )
 
-            response_data = {"PolicyId": policy_id, "TargetId": resolved_target_id, "Message": "Policy attachment already exists"}
+            response_data = {
+                "PolicyId": policy_id,
+                "TargetId": resolved_target_id,
+                "Message": "Policy attachment already exists",
+            }
 
             send_success_response(
-                event=event, context=context, response_data=response_data, physical_resource_id=physical_resource_id
+                event=event,
+                context=context,
+                response_data=response_data,
+                physical_resource_id=physical_resource_id,
             )
             return
 
         # Attach the policy with retry logic
         def attach_policy():
-            return organizations_client.attach_policy(PolicyId=policy_id, TargetId=resolved_target_id)
+            return organizations_client.attach_policy(
+                PolicyId=policy_id, TargetId=resolved_target_id
+            )
 
         retry_with_backoff(attach_policy)
 
         log.info(
             "Service Control Policy attached successfully",
-            details={"policy_id": policy_id, "target_id": resolved_target_id, "physical_resource_id": physical_resource_id},
+            details={
+                "policy_id": policy_id,
+                "target_id": resolved_target_id,
+                "physical_resource_id": physical_resource_id,
+            },
         )
 
         response_data = {
@@ -688,13 +870,21 @@ def create_service_control_policy_attachment(event: Dict[str, Any], context: Any
             "Message": "Service Control Policy attached successfully",
         }
 
-        send_success_response(event=event, context=context, response_data=response_data, physical_resource_id=physical_resource_id)
+        send_success_response(
+            event=event,
+            context=context,
+            response_data=response_data,
+            physical_resource_id=physical_resource_id,
+        )
 
     except ValueError as validation_error:
         error_msg = f"Validation error creating SCP attachment: {str(validation_error)}"
         log.error(
             "SCP attachment creation validation failed",
-            details={"error": str(validation_error), "resource_properties": event.get("ResourceProperties", {})},
+            details={
+                "error": str(validation_error),
+                "resource_properties": event.get("ResourceProperties", {}),
+            },
         )
         send_failure_response(event, context, error_msg)
 
@@ -712,7 +902,9 @@ def create_service_control_policy_attachment(event: Dict[str, Any], context: Any
         send_failure_response(event, context, error_msg)
 
 
-def update_service_control_policy_attachment(event: Dict[str, Any], context: Any) -> None:
+def update_service_control_policy_attachment(
+    event: Dict[str, Any], context: Any
+) -> None:
     """
     Update a Service Control Policy attachment by detaching from old target and attaching to new target.
 
@@ -725,7 +917,10 @@ def update_service_control_policy_attachment(event: Dict[str, Any], context: Any
 
     log.info(
         "Starting Service Control Policy attachment update",
-        details={"physical_resource_id": physical_resource_id, "logical_resource_id": event.get("LogicalResourceId")},
+        details={
+            "physical_resource_id": physical_resource_id,
+            "logical_resource_id": event.get("LogicalResourceId"),
+        },
     )
 
     try:
@@ -749,7 +944,9 @@ def update_service_control_policy_attachment(event: Dict[str, Any], context: Any
             raise ValueError("PolicyId and TargetId are required")
 
         if not old_policy_id or not old_target_id:
-            raise ValueError("OldResourceProperties with PolicyId and TargetId are required")
+            raise ValueError(
+                "OldResourceProperties with PolicyId and TargetId are required"
+            )
 
         log.info(
             "Updating Service Control Policy attachment",
@@ -766,33 +963,61 @@ def update_service_control_policy_attachment(event: Dict[str, Any], context: Any
         resolved_new_target_id = validate_target_id(new_target_id, organizations_client)
 
         # Detach from old target
-        if is_policy_attached_to_target(old_policy_id, resolved_old_target_id, organizations_client):
-            log.info("Detaching policy from old target", details={"policy_id": old_policy_id, "target_id": resolved_old_target_id})
+        if is_policy_attached_to_target(
+            old_policy_id, resolved_old_target_id, organizations_client
+        ):
+            log.info(
+                "Detaching policy from old target",
+                details={
+                    "policy_id": old_policy_id,
+                    "target_id": resolved_old_target_id,
+                },
+            )
 
             def detach_old_policy():
-                return organizations_client.detach_policy(PolicyId=old_policy_id, TargetId=resolved_old_target_id)
+                return organizations_client.detach_policy(
+                    PolicyId=old_policy_id, TargetId=resolved_old_target_id
+                )
 
             retry_with_backoff(detach_old_policy)
 
             log.info("Policy detached from old target successfully")
         else:
             log.warning(
-                "Policy was not attached to old target", details={"policy_id": old_policy_id, "target_id": resolved_old_target_id}
+                "Policy was not attached to old target",
+                details={
+                    "policy_id": old_policy_id,
+                    "target_id": resolved_old_target_id,
+                },
             )
 
         # Attach to new target
-        if not is_policy_attached_to_target(new_policy_id, resolved_new_target_id, organizations_client):
-            log.info("Attaching policy to new target", details={"policy_id": new_policy_id, "target_id": resolved_new_target_id})
+        if not is_policy_attached_to_target(
+            new_policy_id, resolved_new_target_id, organizations_client
+        ):
+            log.info(
+                "Attaching policy to new target",
+                details={
+                    "policy_id": new_policy_id,
+                    "target_id": resolved_new_target_id,
+                },
+            )
 
             def attach_new_policy():
-                return organizations_client.attach_policy(PolicyId=new_policy_id, TargetId=resolved_new_target_id)
+                return organizations_client.attach_policy(
+                    PolicyId=new_policy_id, TargetId=resolved_new_target_id
+                )
 
             retry_with_backoff(attach_new_policy)
 
             log.info("Policy attached to new target successfully")
         else:
             log.info(
-                "Policy already attached to new target", details={"policy_id": new_policy_id, "target_id": resolved_new_target_id}
+                "Policy already attached to new target",
+                details={
+                    "policy_id": new_policy_id,
+                    "target_id": resolved_new_target_id,
+                },
             )
 
         response_data = {
@@ -802,13 +1027,21 @@ def update_service_control_policy_attachment(event: Dict[str, Any], context: Any
             "Message": "Service Control Policy attachment updated successfully",
         }
 
-        send_success_response(event=event, context=context, response_data=response_data, physical_resource_id=physical_resource_id)
+        send_success_response(
+            event=event,
+            context=context,
+            response_data=response_data,
+            physical_resource_id=physical_resource_id,
+        )
 
     except ValueError as validation_error:
         error_msg = f"Validation error updating SCP attachment: {str(validation_error)}"
         log.error(
             "SCP attachment update validation failed",
-            details={"physical_resource_id": physical_resource_id, "error": str(validation_error)},
+            details={
+                "physical_resource_id": physical_resource_id,
+                "error": str(validation_error),
+            },
         )
         send_failure_response(event, context, error_msg, physical_resource_id)
 
@@ -816,12 +1049,18 @@ def update_service_control_policy_attachment(event: Dict[str, Any], context: Any
         error_msg = f"Failed to update Service Control Policy attachment: {str(e)}"
         log.error(
             "Service Control Policy attachment update failed",
-            details={"physical_resource_id": physical_resource_id, "error": str(e), "error_type": type(e).__name__},
+            details={
+                "physical_resource_id": physical_resource_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
         )
         send_failure_response(event, context, error_msg, physical_resource_id)
 
 
-def delete_service_control_policy_attachment(event: Dict[str, Any], context: Any) -> None:
+def delete_service_control_policy_attachment(
+    event: Dict[str, Any], context: Any
+) -> None:
     """
     Delete a Service Control Policy attachment from a target.
 
@@ -834,16 +1073,24 @@ def delete_service_control_policy_attachment(event: Dict[str, Any], context: Any
 
     log.info(
         "Starting Service Control Policy attachment deletion",
-        details={"physical_resource_id": physical_resource_id, "logical_resource_id": event.get("LogicalResourceId")},
+        details={
+            "physical_resource_id": physical_resource_id,
+            "logical_resource_id": event.get("LogicalResourceId"),
+        },
     )
 
     try:
         if not physical_resource_id or physical_resource_id.startswith("Failed/"):
-            log.info("Skipping deletion - invalid or failed attachment ID", details={"physical_resource_id": physical_resource_id})
+            log.info(
+                "Skipping deletion - invalid or failed attachment ID",
+                details={"physical_resource_id": physical_resource_id},
+            )
             send_success_response(
                 event=event,
                 context=context,
-                response_data={"Message": "Skipped deletion - attachment was never created"},
+                response_data={
+                    "Message": "Skipped deletion - attachment was never created"
+                },
                 physical_resource_id=physical_resource_id or "",
             )
             return
@@ -860,22 +1107,34 @@ def delete_service_control_policy_attachment(event: Dict[str, Any], context: Any
         if not policy_id or not target_id:
             raise ValueError("PolicyId and TargetId are required")
 
-        log.info("Deleting Service Control Policy attachment", details={"policy_id": policy_id, "target_id": target_id})
+        log.info(
+            "Deleting Service Control Policy attachment",
+            details={"policy_id": policy_id, "target_id": target_id},
+        )
 
         # Validate and resolve target ID
         resolved_target_id = validate_target_id(target_id, organizations_client)
 
         # Check if policy is attached
-        if not is_policy_attached_to_target(policy_id, resolved_target_id, organizations_client):
+        if not is_policy_attached_to_target(
+            policy_id, resolved_target_id, organizations_client
+        ):
             log.info(
                 "Policy not attached to target - already detached",
                 details={"policy_id": policy_id, "target_id": resolved_target_id},
             )
 
-            response_data = {"PolicyId": policy_id, "TargetId": resolved_target_id, "Message": "Policy attachment already deleted"}
+            response_data = {
+                "PolicyId": policy_id,
+                "TargetId": resolved_target_id,
+                "Message": "Policy attachment already deleted",
+            }
 
             send_success_response(
-                event=event, context=context, response_data=response_data, physical_resource_id=physical_resource_id
+                event=event,
+                context=context,
+                response_data=response_data,
+                physical_resource_id=physical_resource_id,
             )
             return
 
@@ -885,17 +1144,26 @@ def delete_service_control_policy_attachment(event: Dict[str, Any], context: Any
             if len(attachments) <= 1:
                 log.info(
                     "This is the last attachment - attaching default policy first",
-                    details={"policy_id": policy_id, "target_id": resolved_target_id, "remaining_attachments": len(attachments)},
+                    details={
+                        "policy_id": policy_id,
+                        "target_id": resolved_target_id,
+                        "remaining_attachments": len(attachments),
+                    },
                 )
-                handle_default_policy_attachment(resolved_target_id, organizations_client, event)
+                handle_default_policy_attachment(
+                    resolved_target_id, organizations_client, event
+                )
         except Exception as e:
             log.warning(
-                "Could not check attachment count for default policy handling", details={"policy_id": policy_id, "error": str(e)}
+                "Could not check attachment count for default policy handling",
+                details={"policy_id": policy_id, "error": str(e)},
             )
 
         # Detach the policy with retry logic
         def detach_policy():
-            return organizations_client.detach_policy(PolicyId=policy_id, TargetId=resolved_target_id)
+            return organizations_client.detach_policy(
+                PolicyId=policy_id, TargetId=resolved_target_id
+            )
 
         retry_with_backoff(detach_policy)
 
@@ -910,13 +1178,21 @@ def delete_service_control_policy_attachment(event: Dict[str, Any], context: Any
             "Message": "Service Control Policy attachment deleted successfully",
         }
 
-        send_success_response(event=event, context=context, response_data=response_data, physical_resource_id=physical_resource_id)
+        send_success_response(
+            event=event,
+            context=context,
+            response_data=response_data,
+            physical_resource_id=physical_resource_id,
+        )
 
     except ValueError as validation_error:
         error_msg = f"Validation error deleting SCP attachment: {str(validation_error)}"
         log.error(
             "SCP attachment deletion validation failed",
-            details={"physical_resource_id": physical_resource_id, "error": str(validation_error)},
+            details={
+                "physical_resource_id": physical_resource_id,
+                "error": str(validation_error),
+            },
         )
         send_failure_response(event, context, error_msg, physical_resource_id)
 
@@ -924,7 +1200,11 @@ def delete_service_control_policy_attachment(event: Dict[str, Any], context: Any
         error_msg = f"Failed to delete Service Control Policy attachment: {str(e)}"
         log.error(
             "Service Control Policy attachment deletion failed",
-            details={"physical_resource_id": physical_resource_id, "error": str(e), "error_type": type(e).__name__},
+            details={
+                "physical_resource_id": physical_resource_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
         )
         send_failure_response(event, context, error_msg, physical_resource_id)
 
@@ -947,13 +1227,21 @@ def get_default_policy() -> List[Dict[str, Any]]:
 
         log.info(
             "Retrieved Service Control Policies",
-            details={"policy_count": len(policies), "policies": [{"Id": p.get("Id"), "Name": p.get("Name")} for p in policies]},
+            details={
+                "policy_count": len(policies),
+                "policies": [
+                    {"Id": p.get("Id"), "Name": p.get("Name")} for p in policies
+                ],
+            },
         )
 
         return policies
 
     except Exception as e:
-        log.error("Failed to get default policies", details={"error": str(e), "error_type": type(e).__name__})
+        log.error(
+            "Failed to get default policies",
+            details={"error": str(e), "error_type": type(e).__name__},
+        )
         return []
 
 

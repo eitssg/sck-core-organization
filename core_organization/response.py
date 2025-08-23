@@ -174,13 +174,21 @@ def send_response(
 
         log.info(
             "CloudFormation response sent successfully",
-            details={"status": response_status, "physical_resource_id": physical_resource_id},
+            details={
+                "status": response_status,
+                "physical_resource_id": physical_resource_id,
+            },
         )
 
     except KeyError as key_error:
         log.error(
             "Missing required fields in CloudFormation event",
-            details={"error": str(key_error), "event_keys": list(event.keys()) if isinstance(event, dict) else "not_dict"},
+            details={
+                "error": str(key_error),
+                "event_keys": (
+                    list(event.keys()) if isinstance(event, dict) else "not_dict"
+                ),
+            },
         )
         # Don't re-raise - let CloudFormation timeout to avoid hanging
 
@@ -258,12 +266,19 @@ def _send_http_response(response_url: str, response_body: str) -> None:
 
     log.debug(
         "HTTP response received from CloudFormation",
-        details={"status_code": response.getcode(), "status_message": response.msg, "response_url": response_url},
+        details={
+            "status_code": response.getcode(),
+            "status_message": response.msg,
+            "response_url": response_url,
+        },
     )
 
 
 def send_success_response(
-    event: Dict[str, Any], context: Any, response_data: Optional[Dict[str, Any]] = None, physical_resource_id: Optional[str] = None
+    event: Dict[str, Any],
+    context: Any,
+    response_data: Optional[Dict[str, Any]] = None,
+    physical_resource_id: Optional[str] = None,
 ) -> None:
     """
     Convenience function to send a SUCCESS response to CloudFormation.
@@ -300,7 +315,10 @@ def send_success_response(
 
 
 def send_failure_response(
-    event: Dict[str, Any], context: Any, error_message: str, physical_resource_id: Optional[str] = None
+    event: Dict[str, Any],
+    context: Any,
+    error_message: str,
+    physical_resource_id: Optional[str] = None,
 ) -> None:
     """
     Convenience function to send a FAILED response to CloudFormation.
