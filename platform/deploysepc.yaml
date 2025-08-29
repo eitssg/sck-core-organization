@@ -9,7 +9,7 @@
     template: core-organization-lambda.yaml
     account: "{{ AutomationAccount }}"
     region: "{{ AutomationRegion }}"
-    stack_parameters:
+    parameters:
       Client: "{{ Client }}"
       Environment: "{{ Environment }}"
       Scope: "{{ Scope | default('') }}"
