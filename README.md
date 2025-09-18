@@ -2,6 +2,8 @@
 
 Contains all Sourced custom resource handler definitions.
 
+> Copilot: See [local instructions](.github/copilot-instructions.md) and [root guidance](../../.github/copilot-instructions.md) for precedence and module rules.
+
 * All cusotm resources must have the following attribute which informs cloudformation of the lambda to use:
   ServiceToken: !Ref 'CustomFunctionArn'
 
