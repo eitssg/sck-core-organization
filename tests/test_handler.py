@@ -6,6 +6,7 @@ import pytest
 from core_organization.handler import handler
 
 import core_helper.aws as aws
+from core_helper.aws import AwsCredentials
 
 
 @pytest.fixture
@@ -31,9 +32,9 @@ def test_handler(context):
 
     d["Identity"] = aws.get_identity()
 
-    credentials = aws.get_session_credentials()
+    credentials: AwsCredentials = aws.get_session_credentials()
 
-    d["Credentials"] = credentials["SessionToken"]
+    d["Credentials"] = credentials.session_token
 
     response = handler(d, context)
 
