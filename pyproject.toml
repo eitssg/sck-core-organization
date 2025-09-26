@@ -4,7 +4,7 @@ build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry]
 name = "sck-core-organization"
-version = "0.1.1"
+version = "0.1.2-pre.1+3ecd0a6"
 description = "Manage organization resources and service control policy"
 authors = [ "James Barwick <jbarwick@me.com>",]
 license = "GPL-3.0-only"
@@ -40,6 +40,7 @@ develop = true
 [tool.poetry.dependencies.sck-core-framework]
 path = "../sck-core-framework"
 develop = true
+
 [tool.poetry-dynamic-versioning.substitution]
 files = ["core_organization/__init__.py"]
 
