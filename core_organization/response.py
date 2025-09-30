@@ -185,9 +185,7 @@ def send_response(
             "Missing required fields in CloudFormation event",
             details={
                 "error": str(key_error),
-                "event_keys": (
-                    list(event.keys()) if isinstance(event, dict) else "not_dict"
-                ),
+                "event_keys": (list(event.keys()) if isinstance(event, dict) else "not_dict"),
             },
         )
         # Don't re-raise - let CloudFormation timeout to avoid hanging

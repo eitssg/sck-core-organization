@@ -107,18 +107,12 @@ def validate_event(event: dict) -> tuple[str, str]:
     # Validate resource type is supported
     if resource_type not in SUPPORTED_RESOURCE_TYPES:
         supported = ", ".join(SUPPORTED_RESOURCE_TYPES)
-        raise ValueError(
-            f"Unsupported resource type '{resource_type}'. "
-            f"Supported types: {supported}"
-        )
+        raise ValueError(f"Unsupported resource type '{resource_type}'. " f"Supported types: {supported}")
 
     # Validate request type is supported
     if request_type not in SUPPORTED_REQUEST_TYPES:
         supported = ", ".join(SUPPORTED_REQUEST_TYPES)
-        raise ValueError(
-            f"Unsupported request type '{request_type}'. "
-            f"Supported types: {supported}"
-        )
+        raise ValueError(f"Unsupported request type '{request_type}'. " f"Supported types: {supported}")
 
     return resource_type, request_type
 

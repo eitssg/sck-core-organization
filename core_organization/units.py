@@ -316,15 +316,11 @@ def list_organizational_units(event: Dict[str, Any], context: Any) -> None:
         # Resolve parent ID
         resolved_parent_id = resolve_parent_id(parent_id, organizations_client)
 
-        log.info(
-            "Listing organizational units", details={"parent_id": resolved_parent_id}
-        )
+        log.info("Listing organizational units", details={"parent_id": resolved_parent_id})
 
         # List organizational units
         def list_ous():
-            return organizations_client.list_organizational_units_for_parent(
-                ParentId=resolved_parent_id
-            )
+            return organizations_client.list_organizational_units_for_parent(ParentId=resolved_parent_id)
 
         response = retry_with_backoff(list_ous)
 
@@ -429,9 +425,7 @@ def create_organizational_unit(event: Dict[str, Any], context: Any) -> None:
 
         # Create the organizational unit
         def create_ou():
-            return organizations_client.create_organizational_unit(
-                ParentId=resolved_parent_id, Name=ou_name
-            )
+            return organizations_client.create_organizational_unit(ParentId=resolved_parent_id, Name=ou_name)
 
         response = retry_with_backoff(create_ou)
 
@@ -467,11 +461,7 @@ def create_organizational_unit(event: Dict[str, Any], context: Any) -> None:
         )
 
         # Handle child account movements if specified
-        if (
-            children
-            and isinstance(children, collections.abc.Iterable)
-            and not isinstance(children, str)
-        ):
+        if children and isinstance(children, collections.abc.Iterable) and not isinstance(children, str):
             log.info(
                 "Processing child account movements",
                 details={"ou_id": ou_id, "child_count": len(children)},
@@ -487,9 +477,7 @@ def create_organizational_unit(event: Dict[str, Any], context: Any) -> None:
                         continue
 
                     # Get current parent of the account
-                    parent_response = organizations_client.list_parents(
-                        ChildId=child_account_id
-                    )
+                    parent_response = organizations_client.list_parents(ChildId=child_account_id)
                     if not parent_response.get("Parents"):
                         log.warning(
                             "No parent found for account",
@@ -509,9 +497,7 @@ def create_organizational_unit(event: Dict[str, Any], context: Any) -> None:
                     )
 
                     # Move the account
-                    move_account_with_retry(
-                        child_account_id, current_parent_id, ou_id, organizations_client
-                    )
+                    move_account_with_retry(child_account_id, current_parent_id, ou_id, organizations_client)
 
                 except Exception as child_error:
                     log.error(
@@ -602,9 +588,7 @@ def update_organizational_unit(event: Dict[str, Any], context: Any) -> None:
 
         # Update the organizational unit
         def update_ou():
-            return organizations_client.update_organizational_unit(
-                OrganizationalUnitId=ou_id, Name=ou_name
-            )
+            return organizations_client.update_organizational_unit(OrganizationalUnitId=ou_id, Name=ou_name)
 
         response = retry_with_backoff(update_ou)
 
@@ -618,11 +602,7 @@ def update_organizational_unit(event: Dict[str, Any], context: Any) -> None:
         )
 
         # Handle child account movements if specified
-        if (
-            children
-            and isinstance(children, collections.abc.Iterable)
-            and not isinstance(children, str)
-        ):
+        if children and isinstance(children, collections.abc.Iterable) and not isinstance(children, str):
             log.info(
                 "Processing child account movements for update",
                 details={"ou_id": ou_id, "child_count": len(children)},
@@ -638,9 +618,7 @@ def update_organizational_unit(event: Dict[str, Any], context: Any) -> None:
                         continue
 
                     # Get current parent of the account
-                    parent_response = organizations_client.list_parents(
-                        ChildId=child_account_id
-                    )
+                    parent_response = organizations_client.list_parents(ChildId=child_account_id)
                     if not parent_response.get("Parents"):
                         log.warning(
                             "No parent found for account",
@@ -668,9 +646,7 @@ def update_organizational_unit(event: Dict[str, Any], context: Any) -> None:
                     )
 
                     # Move the account
-                    move_account_with_retry(
-                        child_account_id, current_parent_id, ou_id, organizations_client
-                    )
+                    move_account_with_retry(child_account_id, current_parent_id, ou_id, organizations_client)
 
                 except Exception as child_error:
                     log.error(
@@ -736,9 +712,7 @@ def move_all_children_to_root(ou_id: str, organizations_client: Any) -> None:
         root_id = root_response["Roots"][0]["Id"]
 
         # Get all child accounts
-        children_response = organizations_client.list_children(
-            ParentId=ou_id, ChildType="ACCOUNT"
-        )
+        children_response = organizations_client.list_children(ParentId=ou_id, ChildType="ACCOUNT")
 
         children = children_response.get("Children", [])
 
@@ -784,9 +758,7 @@ def move_all_children_to_root(ou_id: str, organizations_client: Any) -> None:
         )
 
     except Exception as e:
-        log.error(
-            "Failed to move children to root", details={"ou_id": ou_id, "error": str(e)}
-        )
+        log.error("Failed to move children to root", details={"ou_id": ou_id, "error": str(e)})
         raise
 
 
@@ -808,9 +780,7 @@ def delete_organizational_unit(event: Dict[str, Any], context: Any) -> None:
 
     try:
         if not ou_id or ou_id.startswith("Failed/"):
-            log.info(
-                "Skipping deletion - invalid or failed OU ID", details={"ou_id": ou_id}
-            )
+            log.info("Skipping deletion - invalid or failed OU ID", details={"ou_id": ou_id})
             send_success_response(
                 event=event,
                 context=context,
@@ -840,9 +810,7 @@ def delete_organizational_unit(event: Dict[str, Any], context: Any) -> None:
 
         # Delete the organizational unit
         def delete_ou():
-            return organizations_client.delete_organizational_unit(
-                OrganizationalUnitId=ou_id
-            )
+            return organizations_client.delete_organizational_unit(OrganizationalUnitId=ou_id)
 
         retry_with_backoff(delete_ou)
 
@@ -904,9 +872,7 @@ def move_account_between_ous(event: Dict[str, Any], context: Any) -> None:
             raise ValueError("DestinationParentId is required")
 
         # Resolve destination parent ID
-        resolved_destination_id = resolve_parent_id(
-            destination_parent_id, organizations_client
-        )
+        resolved_destination_id = resolve_parent_id(destination_parent_id, organizations_client)
 
         # Get current parent if source not specified
         if not source_parent_id:
@@ -923,9 +889,7 @@ def move_account_between_ous(event: Dict[str, Any], context: Any) -> None:
                 },
             )
         else:
-            resolved_source_id = resolve_parent_id(
-                source_parent_id, organizations_client
-            )
+            resolved_source_id = resolve_parent_id(source_parent_id, organizations_client)
 
         # Check if account is already in destination
         if resolved_source_id == resolved_destination_id:
