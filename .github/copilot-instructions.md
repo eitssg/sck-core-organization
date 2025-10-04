@@ -1,5 +1,8 @@
 # Copilot Instructions (Submodule: sck-core-organization)
 
+## Plan → Approval → Execute (Mandatory)
+Must present plan for non-trivial actions; wait for user approval before edits or command execution.
+
 - Tech: Python package.
 - Precedence: Local first; root `../../.github/...` next.
 - Conventions: Follow `../sck-core-ui/docs/backend-code-style.md` where relevant.
