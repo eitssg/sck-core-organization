@@ -1,5 +1,7 @@
 from .handler import handler
 
-__version__ = "0.1.2-pre.6+48728e9"
+from importlib.metadata import version
+
+__version__ = version("sck-core-organization")
 
 __all__ = ["handler"]
